@@ -7,6 +7,9 @@
 #include "Esp32MQTTClient.h"
 #include <ezTime.h>
 
+#define RED 5
+#define GREEN 18
+#define BLUE 19
 
 // SI7021 I2C address is 0x40(64)
 #define Addr 0x40
@@ -16,10 +19,9 @@
 
 const char *deviceId = "esp32-si7021";
 // Please input the SSID and password of WiFi
-//const char *ssid = "SSID";
-//const char *password = "password";
-const char *ssid = "";
-const char *password = "";
+const char *ssid = "SSID";
+const char *password = "PASSWORD";
+
 
 
 /*String containing Hostname, Device Id & Device Key in the format:                         */
@@ -46,6 +48,24 @@ static void MessageCallback(const char *payLoad, int size)
 {
   Serial.println("Message callback:");
   Serial.println(payLoad);
+  if (strcmp(payLoad, "start") == 0)
+  {
+    digitalWrite (GREEN, HIGH);
+    digitalWrite (RED, LOW);
+    LogInfo("Start sending temperature and humidity data");
+    messageSending = true;
+  }
+  else if (strcmp(payLoad, "stop") == 0)
+  {
+    digitalWrite (GREEN, LOW);
+    digitalWrite (RED, HIGH);
+    LogInfo("Stop sending temperature and humidity data");
+    messageSending = false;
+  }
+  else
+  {
+    LogInfo("No method %s found", payLoad);
+  }
 }
 
 static void DeviceTwinCallback(DEVICE_TWIN_UPDATE_STATE updateState, const unsigned char *payLoad, int size)
@@ -70,11 +90,15 @@ static int DeviceMethodCallback(const char *methodName, const unsigned char *pay
 
   if (strcmp(methodName, "start") == 0)
   {
+    digitalWrite (GREEN, HIGH);
+    digitalWrite (RED, LOW);
     LogInfo("Start sending temperature and humidity data");
     messageSending = true;
   }
   else if (strcmp(methodName, "stop") == 0)
   {
+    digitalWrite (GREEN, LOW);
+    digitalWrite (RED, HIGH);
     LogInfo("Stop sending temperature and humidity data");
     messageSending = false;
   }
@@ -124,9 +148,17 @@ void setup()
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
+  //Init NTP
   waitForSync();
   Serial.println("Started on " +  UTC.dateTime(ISO8601));
-    
+
+  //INIT Leds
+  pinMode (RED, OUTPUT);
+  pinMode (GREEN, OUTPUT);
+  pinMode (BLUE, OUTPUT);
+  digitalWrite (BLUE, LOW);
+  digitalWrite (GREEN, LOW);
+  digitalWrite (RED, LOW);
   Serial.println(" > IoT Hub");
   if (!Esp32MQTTClient_Init((const uint8_t *)connectionString, true))
   {
@@ -142,6 +174,7 @@ void setup()
   Serial.println("Start sending events.");
   randomSeed(analogRead(0));
   send_interval_ms = millis();
+  digitalWrite (BLUE, HIGH);
   
 }
 
@@ -196,19 +229,19 @@ void loop()
   float cTemp = ((175.72 * temp) / 65536.0) - 46.85;
    
   // Output data to serial monitor
-  Serial.print("Relative humidity : ");
-  Serial.print(humidity);
-  Serial.println(" % RH");
-  Serial.print("Temperature in Celsius : ");
-  Serial.print(cTemp);
-  Serial.println(" C");
+  // Serial.print("Relative humidity : ");
+  // Serial.print(humidity);
+  // Serial.println(" % RH");
+  // Serial.print("Temperature in Celsius : ");
+  // Serial.print(cTemp);
+  // Serial.println(" C");
 
   if (hasWifi && hasIoTHub)
   {
     if (messageSending &&
         (int)(millis() - send_interval_ms) >= INTERVAL)
     {
-
+      digitalWrite (GREEN, HIGH);
       // Send teperature data
       char messagePayload[MESSAGE_MAX_LEN];
       snprintf(messagePayload, MESSAGE_MAX_LEN, messageData, deviceId, messageCount++, cTemp, humidity, UTC.dateTime(ISO8601).c_str());
