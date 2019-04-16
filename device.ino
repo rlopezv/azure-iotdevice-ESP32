@@ -19,15 +19,15 @@
 
 const char *deviceId = "esp32-si7021";
 // Please input the SSID and password of WiFi
-const char *ssid = "SSID";
-const char *password = "PASSWORD";
+const char *ssid = "";
+const char *password = "";
 
 
 
 /*String containing Hostname, Device Id & Device Key in the format:                         */
 /*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"                */
 /*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessSignature=<device_sas_token>"    */
-static const char *connectionString = "HostName=g5-iothub.azure-devices.net;DeviceId=g5-iotdevice-esp32-si7021;SharedAccessKey=evGX2N7HE0olNvoEiuBcqfr0QGQd6Dp1cQcBGFPiOCc=";
+static const char *connectionString = "HostName=g5-iot-hub.azure-devices.net;DeviceId=g5-iotdevice-esp32-si7021;SharedAccessKey=/axtTVRDncpEvKpZ6Pj7qv6DuBVHytc5NY5qT3ikvkw=";
 const char *messageData = "{\"deviceId\":\"%s\",\"messageId\":%d, \"temperature\":%f, \"humidity\":%f, \"deviceTime\":\"%s\"}";
 static bool hasIoTHub = false;
 static bool hasWifi = false;
@@ -102,6 +102,14 @@ static int DeviceMethodCallback(const char *methodName, const unsigned char *pay
     LogInfo("Stop sending temperature and humidity data");
     messageSending = false;
   }
+  else if (strcmp(methodName, "alert") == 0)
+  {
+    digitalWrite (RED, HIGH);
+    delay(500);
+    digitalWrite (RED, LOW);
+    LogInfo("Alert received: %s",payload);
+    messageSending = false;
+  }  
   else
   {
     LogInfo("No method %s found", methodName);
